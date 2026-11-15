@@ -34,7 +34,7 @@ export default function AppLayout({ children }) {
             <ProcessingIndicator />
 
             {/* Mobile header */}
-            <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+            <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
                 <Link href="/" className="flex items-center gap-2">
                     <span className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">B</span>
                     <span className="font-bold text-slate-800 text-lg">BlogVerse</span>
@@ -54,7 +54,7 @@ export default function AppLayout({ children }) {
                         )}
                     </svg>
                 </button>
-            </div>
+            </header>
 
             {/* Sidebar */}
             <aside

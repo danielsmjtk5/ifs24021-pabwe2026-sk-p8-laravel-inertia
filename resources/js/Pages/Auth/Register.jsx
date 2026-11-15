@@ -16,7 +16,7 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <main className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <Head title="Daftar Akun" />
 
             <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -137,7 +137,7 @@ export default function Register() {
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     );
 }
 

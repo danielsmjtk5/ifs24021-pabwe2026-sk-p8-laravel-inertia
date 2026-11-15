@@ -120,7 +120,7 @@ export default function PostIndex({ posts, categories = [], filters = {}, isHome
                     <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {posts.data.map((post) => (
                             <article key={post.id} className="group rounded-2xl border border-slate-200 overflow-hidden bg-white hover:shadow-lg transition flex flex-col">
-                                <Link href={`/articles/${post.slug}`} className="block aspect-[16/9] bg-gradient-to-br from-indigo-100 to-slate-100 overflow-hidden">
+                                <Link href={`/articles/${post.slug}`} aria-label={`Baca artikel: ${post.title}`} className="block aspect-[16/9] bg-gradient-to-br from-indigo-100 to-slate-100 overflow-hidden">
                                     {post.cover_image_url ? (
                                         <img
                                             src={post.cover_image_url}

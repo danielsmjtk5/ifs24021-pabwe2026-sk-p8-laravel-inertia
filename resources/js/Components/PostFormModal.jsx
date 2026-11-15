@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
-import MarkdownEditor from './MarkdownEditor';
 import Spinner from './Spinner';
+
+const MarkdownEditor = lazy(() => import('./MarkdownEditor'));
 
 /**
  * Full-screen modal for creating (post = null) or editing an article.
@@ -131,13 +132,15 @@ export default function PostFormModal({ open, post = null, categories = [], onCl
 
                     <div>
                         <span className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Isi Artikel * (TOAST UI Markdown Editor)</span>
-                        <MarkdownEditor
-                            key={isEdit ? `edit-${post.id}` : 'create'}
-                            value={form.data.content}
-                            onChange={(val) => form.setData('content', val)}
-                            height="460px"
-                            placeholder="Tulis isi artikel dalam format Markdown..."
-                        />
+                        <Suspense fallback={<p role="status" className="min-h-[460px] p-4 text-sm text-slate-600">Memuat editor...</p>}>
+                            <MarkdownEditor
+                                key={isEdit ? `edit-${post.id}` : 'create'}
+                                value={form.data.content}
+                                onChange={(val) => form.setData('content', val)}
+                                height="460px"
+                                placeholder="Tulis isi artikel dalam format Markdown..."
+                            />
+                        </Suspense>
                         {form.errors.content && <p className="mt-1 text-xs text-rose-700">{form.errors.content}</p>}
                     </div>
                 </div>

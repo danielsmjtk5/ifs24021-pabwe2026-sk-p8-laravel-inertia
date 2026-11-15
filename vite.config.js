@@ -12,6 +12,10 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
+    build: {
+        // External maps let Lighthouse and DevTools inspect production chunks.
+        sourcemap: true,
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

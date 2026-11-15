@@ -14,7 +14,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <main className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <Head title="Masuk" />
 
             <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -133,7 +133,7 @@ export default function Login() {
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     );
 }
 

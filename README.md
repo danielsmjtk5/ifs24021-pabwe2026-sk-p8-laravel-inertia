@@ -110,3 +110,17 @@ Pengujian: `composer test` (atau `test.bat`). Pengujian memakai SQLite in-memory
 ## Keamanan & berkas yang tidak di-commit
 
 `.env`, `vendor/`, `node_modules/`, `public/build/`, `coverage*`, dan isi `storage/` (kecuali `.gitignore`-nya) tidak di-commit. API key hanya di `.env`.
+
+## Perbaikan audit UI (Lighthouse dan Axe)
+
+- Login dan register memakai landmark `main`; tautan sampul artikel memiliki nama aksesibel meskipun tanpa gambar.
+- Semua halaman saat ini sudah memiliki `h1`. Pastikan server memakai hasil build terbaru.
+- Editor Markdown dimuat hanya saat form tambah/ubah artikel dibuka. Halaman tetap dimuat per chunk oleh Vite.
+- Build menghasilkan `.js.map` eksternal; ikut sertakan seluruh `public/build/` saat deploy agar Lighthouse dapat mengakses source map.
+- Apache: `public/.htaccess` memberi cache satu tahun untuk aset bernama hash (memerlukan `mod_headers` dan `AllowOverride FileInfo`).
+- Nginx mengabaikan `.htaccess`. Sertakan isi `deploy/nginx-assets.conf` di blok `server` aplikasi yang memakai root direktori `public/`, lalu validasi `nginx -t` dan reload melalui pengelola hosting. Jika tidak punya akses konfigurasi, minta pengelola hosting memasang aturan tersebut.
+- Jangan terapkan cache satu tahun pada HTML, respons login, atau unggahan pengguna.
+
+Setelah deploy, cek header pada salah satu URL `/build/assets/*.js` dari `public/build/manifest.json`: harus ada `Cache-Control: public, max-age=31536000, immutable`. Cek juga URL `.js.map` mengembalikan HTTP 200, kemudian ulangi audit Delcom Grading.
+
+Peringatan unused JavaScript masih dapat mencakup runtime React/Inertia yang dibutuhkan untuk interaksi. Pemisahan chunk tidak otomatis mengurangi total JavaScript yang diunduh; ukur kembali setelah deploy.
