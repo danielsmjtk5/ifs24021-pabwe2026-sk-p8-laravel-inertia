@@ -46,6 +46,68 @@ class OpenAiPostGeneratorServiceTest extends TestCase
         });
     }
 
+    public function test_empty_api_key_does_not_send_request(): void
+    {
+        Http::fake();
+
+        try {
+            (new OpenAiPostGeneratorService('https://ai.test/v1', '', 'test-model'))->generatePosts('Topik');
+            $this->fail('API key kosong harus ditolak.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('Isi OPENAI_KEY di .env', $exception->getMessage());
+        }
+
+        Http::assertNothingSent();
+    }
+
+    public function test_whitespace_api_key_does_not_send_request(): void
+    {
+        Http::fake();
+
+        try {
+            (new OpenAiPostGeneratorService('https://ai.test/v1', " \t\n ", 'test-model'))->generatePosts('Topik');
+            $this->fail('API key berisi spasi harus ditolak.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('Isi OPENAI_KEY di .env', $exception->getMessage());
+        }
+
+        Http::assertNothingSent();
+    }
+
+    public function test_configured_api_key_is_trimmed_and_sent_as_bearer(): void
+    {
+        config(['openai.endpoint' => 'https://ai.test/v1', 'openai.key' => " secret \n", 'openai.model' => 'test-model']);
+        Http::fake(['ai.test/*' => Http::response(['choices' => [['message' => ['content' => '[{"title":"A","content":"B"}]']]]])]);
+
+        (new OpenAiPostGeneratorService)->generatePosts('Topik');
+
+        Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer secret')
+            && $request->hasHeader('Accept', 'application/json')
+            && $request->hasHeader('Content-Type', 'application/json'));
+    }
+
+    public function test_parse_content_cleans_reasoning_and_fences_surrounded_by_prose(): void
+    {
+        $raw = '<think>Penalaran internal {bukan json}</think>'
+            ."\nBerikut artikelnya:\n```json\n"
+            .json_encode(['posts' => [['title' => 'Artikel AI', 'category' => 'Teknologi', 'content' => '## Isi']]])
+            ."\n```\nSemoga membantu.";
+
+        $items = $this->service()->parseContent($raw);
+
+        $this->assertCount(1, $items);
+        $this->assertSame('Artikel AI', $items[0]->title);
+        $this->assertSame('Teknologi', $items[0]->category);
+    }
+
+    public function test_parse_content_extracts_json_surrounded_by_prose(): void
+    {
+        $items = $this->service()->parseContent('Berikut artikel: {"posts":[{"title":"A","content":"B"}]} Selesai.');
+
+        $this->assertCount(1, $items);
+        $this->assertSame('B', $items[0]->content);
+    }
+
     public function test_api_failure_throws_with_message(): void
     {
         Http::fake(['ai.test/*' => Http::response(['error' => ['message' => 'Invalid API key provided.']], 401)]);
@@ -114,8 +176,8 @@ class OpenAiPostGeneratorServiceTest extends TestCase
         config(['openai.endpoint' => 'https://cfg.test/v1', 'openai.key' => 'cfg-key', 'openai.model' => 'cfg-model']);
         Http::fake(['*' => Http::response(['choices' => [['message' => ['content' => '[{"title":"A","content":"B"}]']]]])]);
 
-        (new OpenAiPostGeneratorService())->generatePosts('x');
+        (new OpenAiPostGeneratorService)->generatePosts('x');
 
-        Http::assertSent(fn (Request $r) => $r->url() === 'https://cfg.test/v1/chat/completions' && $r['model'] === 'cfg-model');
+        Http::assertSent(fn (Request $r) => $r->url() === 'https://cfg.test/v1/chat/completions' && $r['model'] === 'cfg-model' && $r->hasHeader('Authorization', 'Bearer cfg-key'));
     }
 }

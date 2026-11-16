@@ -11,7 +11,9 @@ use RuntimeException;
 class OpenAiPostGeneratorService implements AiClientInterface
 {
     protected string $endpoint;
+
     protected string $apiKey;
+
     protected string $model;
 
     public function __construct(
@@ -23,16 +25,16 @@ class OpenAiPostGeneratorService implements AiClientInterface
         $resolvedKey = (string) ($apiKey ?? config('openai.key', ''));
 
         // Tolerate OPENAI_ENDPOINT and OPENAI_KEY being swapped in .env
-        if ($this->isUrl($resolvedKey) && !$this->isUrl($resolvedEndpoint)) {
+        if ($this->isUrl($resolvedKey) && ! $this->isUrl($resolvedEndpoint)) {
             [$resolvedEndpoint, $resolvedKey] = [$resolvedKey, $resolvedEndpoint];
         }
 
-        if ($resolvedEndpoint !== '' && !$this->isUrl($resolvedEndpoint)) {
+        if ($resolvedEndpoint !== '' && ! $this->isUrl($resolvedEndpoint)) {
             $resolvedEndpoint = 'https://'.$resolvedEndpoint;
         }
 
         $this->endpoint = rtrim($resolvedEndpoint, '/');
-        $this->apiKey = $resolvedKey;
+        $this->apiKey = trim($resolvedKey);
         $this->model = $model ?? (string) config('openai.model', 'gpt-4o-mini');
     }
 
@@ -46,6 +48,10 @@ class OpenAiPostGeneratorService implements AiClientInterface
         $prompt = trim($prompt);
         if ($prompt === '') {
             throw new RuntimeException('Prompt tidak boleh kosong.');
+        }
+
+        if ($this->apiKey === '') {
+            throw new RuntimeException('API key AI belum dikonfigurasi. Isi OPENAI_KEY di .env, lalu jalankan php artisan config:clear.');
         }
 
         $count = max(1, min(5, $count));
@@ -64,19 +70,18 @@ Respond strictly with a valid JSON object matching this schema and nothing else:
 }
 SYS;
 
-        $response = Http::withHeaders([
-            'Authorization' => "Bearer {$this->apiKey}",
-            'Content-Type' => 'application/json',
-        ])->timeout(60)->post("{$this->endpoint}/chat/completions", [
-            'model' => $this->model,
-            'messages' => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => $prompt],
-            ],
-            'temperature' => 0.7,
-        ]);
+        $response = Http::withToken($this->apiKey)
+            ->acceptJson()
+            ->timeout(120)->post("{$this->endpoint}/chat/completions", [
+                'model' => $this->model,
+                'messages' => [
+                    ['role' => 'system', 'content' => $systemPrompt],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'temperature' => 0.7,
+            ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $errorMessage = $response->json('error.message') ?? "Request failed with status code {$response->status()}";
             throw new RuntimeException("OpenAI API Error: {$errorMessage}");
         }
@@ -92,15 +97,22 @@ SYS;
      */
     public function parseContent(string $rawContent): array
     {
-        $clean = trim($rawContent);
+        $clean = trim((string) preg_replace('/<think>.*?<\/think>/is', '', $rawContent));
 
-        if (str_starts_with($clean, '```')) {
-            $clean = (string) preg_replace('/^```(?:json)?\s*/i', '', $clean);
-            $clean = trim((string) preg_replace('/\s*```$/', '', $clean));
+        // Ambil JSON di dalam ```json ... ```, di mana pun posisinya.
+        if (preg_match('/```(?:json)?\s*(.*?)```/is', $clean, $fence)) {
+            $clean = trim($fence[1]);
+        }
+
+        // Buang kalimat di sekitar JSON: ambil dari { atau [ pertama sampai } atau ] terakhir.
+        $start = strcspn($clean, '{[');
+        $end = max((int) strrpos($clean, '}'), (int) strrpos($clean, ']'));
+        if ($start < strlen($clean) && $end > $start) {
+            $clean = substr($clean, $start, $end - $start + 1);
         }
 
         $decoded = json_decode($clean, true);
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             throw new RuntimeException('AI mengembalikan format respon yang tidak valid.');
         }
 
@@ -114,7 +126,7 @@ SYS;
 
         $results = [];
         foreach ($items as $item) {
-            if (!is_array($item) || trim((string) ($item['title'] ?? '')) === '' || trim((string) ($item['content'] ?? '')) === '') {
+            if (! is_array($item) || trim((string) ($item['title'] ?? '')) === '' || trim((string) ($item['content'] ?? '')) === '') {
                 continue;
             }
 
